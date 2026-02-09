@@ -6,14 +6,12 @@
 <body>
   <h1>EarlySteps – Child Development Check</h1>
 
-  <div id="app">
-    <p id="question">Click start to begin</p>
+  <p id="question">Does your child respond to their name?</p>
 
-    <button onclick="answer('yes')">Yes</button>
-    <button onclick="answer('no')">No</button>
-    <br><br>
-    <button onclick="startCheck()">Start Check</button>
-  </div>
+  <button onclick="answerYes()">Yes</button>
+  <button onclick="answerNo()">No</button>
+
+  <p id="result" style="margin-top:20px; font-weight:bold;"></p>
 
   <script src="script.js"></script>
 </body>

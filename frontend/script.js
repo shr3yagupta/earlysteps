@@ -1,37 +1,32 @@
-let questions = [
-  "Does your child respond to their name?",
-  "Does your child make eye contact?",
-  "Does your child try to speak words?"
-];
+let answers = [];
 
-let current = 0;
-let score = 0;
-
-function startCheck() {
-  current = 0;
-  score = 0;
-  document.getElementById("question").innerText = questions[current];
+function answerYes() {
+  answers.push("yes");
+  sendToBackend();
 }
 
-function answer(value) {
-  if (value === "yes") {
-    score++;
+function answerNo() {
+  answers.push("no");
+  sendToBackend();
+}
+
+async function sendToBackend() {
+  const resultEl = document.getElementById("result");
+  resultEl.innerText = "Checking...";
+
+  try {
+    const res = await fetch("https://earlysteps-backend.onrender.com/check", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ answers })
+    });
+
+    const data = await res.json();
+    resultEl.innerText = data.result;
+  } catch (err) {
+    resultEl.innerText = "Backend not reachable";
   }
-
-  current++;
-
-  if (current < questions.length) {
-    document.getElementById("question").innerText = questions[current];
-  } else {
-    showResult();
-  }
 }
 
-function showResult() {
-  let result =
-    score >= 2
-      ? "✅ Development looks on track"
-      : "⚠️ Consider professional screening";
-
-  document.getElementById("question").innerText = result;
-}

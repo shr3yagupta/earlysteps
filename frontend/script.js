@@ -15,7 +15,8 @@ async function sendToBackend() {
   resultEl.innerText = "Checking...";
 
   try {
-    const res = await fetch("https://earlysteps-backend.onrender.com/check", {
+    const res = await fetch("https://earlysteps-backend.onrender.com/evaluate"
+, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"

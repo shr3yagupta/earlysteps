@@ -15,19 +15,25 @@ async function sendToBackend() {
   resultEl.innerText = "Checking...";
 
   try {
-    const res = await fetch("https://earlysteps-backend.onrender.com/evaluate"
-, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ answers })
-    });
+    const res = await fetch(
+      "https://earlysteps-backend.onrender.com/check",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ answers })
+      }
+    );
 
     const data = await res.json();
+
+    // ✅ THIS LINE FIXES "undefined"
     resultEl.innerText = data.result;
+
   } catch (err) {
     resultEl.innerText = "Backend not reachable";
   }
 }
+
 

@@ -61,6 +61,10 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
         return payload["sub"]
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
+    
+def is_email(identifier: str):
+    return "@" in identifier
+
 # Routes
 @app.get("/")
 def root():

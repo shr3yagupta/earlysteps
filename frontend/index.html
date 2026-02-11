@@ -1,18 +1,32 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>EarlySteps</title>
+  <title>EarlySteps – Child Development Check</title>
 </head>
 <body>
-  <h1>EarlySteps – Child Development Check</h1>
 
-  <p id="question">Does your child respond to their name?</p>
+<h1>EarlySteps – Child Development Check</h1>
 
-  <button onclick="answerYes()">Yes</button>
-  <button onclick="answerNo()">No</button>
+<div id="loginSection">
+  <h2>Login</h2>
+  <input type="text" id="identifier" placeholder="Enter email or phone" />
+  <button onclick="requestOTP()">Send OTP</button>
 
-  <p id="result" style="margin-top:20px; font-weight:bold;"></p>
+  <div id="otpBox" style="display:none;">
+    <input type="text" id="otpInput" placeholder="Enter OTP" />
+    <button onclick="verifyOTP()">Verify OTP</button>
+  </div>
+</div>
 
-  <script src="script.js"></script>
+<div id="appSection" style="display:none;">
+  <h2>Does your child respond to their name?</h2>
+  <button onclick="submitAnswer('yes')">Yes</button>
+  <button onclick="submitAnswer('no')">No</button>
+
+  <p id="result"></p>
+</div>
+
+<script src="script.js"></script>
+
 </body>
 </html>

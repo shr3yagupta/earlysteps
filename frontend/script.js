@@ -1,5 +1,4 @@
 const BASE_URL = "https://earlysteps-backend.onrender.com";
-
 let token = null;
 
 /* ---------------- LOGIN ---------------- */
@@ -14,7 +13,7 @@ async function requestOTP() {
   });
 
   if (res.ok) {
-    alert("OTP generated! Check Render logs for demo.");
+    alert("OTP generated! Check backend logs.");
     document.getElementById("otpBox").style.display = "block";
   } else {
     alert("Error sending OTP");
@@ -35,7 +34,6 @@ async function verifyOTP() {
 
   if (res.ok) {
     token = data.token;
-    alert("Login successful!");
     document.getElementById("loginSection").style.display = "none";
     document.getElementById("profileSection").style.display = "block";
     loadProfiles();
@@ -64,9 +62,7 @@ async function createProfile() {
 
 async function loadProfiles() {
   const res = await fetch(`${BASE_URL}/profiles`, {
-    headers: {
-      "Authorization": `Bearer ${token}`
-    }
+    headers: { "Authorization": `Bearer ${token}` }
   });
 
   const data = await res.json();
@@ -111,11 +107,13 @@ function showQuestionnaire() {
       <p>${q}</p>
       <label><input type="radio" name="q${i}" value="yes"> Yes</label>
       <label><input type="radio" name="q${i}" value="no"> No</label>
+      <br><br>
     `;
   });
 }
 
 async function submitQuestionnaire() {
+
   const answers = [];
 
   for (let i = 0; i < questions.length; i++) {
@@ -140,6 +138,123 @@ async function submitQuestionnaire() {
 
   const data = await res.json();
 
-  document.getElementById("resultText").innerText =
-    "Result for " + child + ": " + data.result;
+  document.getElementById("resultText").innerHTML = `
+    <h3>Status: ${data.status}</h3>
+    <p><strong>AI Developmental Pattern Analysis:</strong></p>
+    <p>${data.summary}</p>
+    <p style="color:gray;"><strong>${data.reassurance}</strong></p>
+
+    <h4>Suggested Next Steps:</h4>
+    <ul>${data.next_steps.map(step => `<li>${step}</li>`).join("")}</ul>
+
+    <p style="color:blue;"><strong>Follow-up:</strong> ${data.follow_up}</p>
+
+    <h4>National Child Helpline (India): 1098</h4>
+  `;
+
+  loadNearbySupport();
+}
+
+/* ---------------- LOCATION SUPPORT ---------------- */
+
+function getUserLocation() {
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(
+      pos => resolve({
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude
+      }),
+      () => reject("Location denied")
+    );
+  });
+}
+
+async function loadNearbySupport() {
+  try {
+    const location = await getUserLocation();
+
+    const res = await fetch(
+      `${BASE_URL}/nearby-support?lat=${location.lat}&lng=${location.lng}`
+    );
+
+    const data = await res.json();
+
+    let html = "<h4>Nearby Support Centers:</h4><ul>";
+    data.forEach(place => {
+      html += `<li><strong>${place.name}</strong><br>${place.address}</li>`;
+    });
+    html += "</ul>";
+
+    document.getElementById("resultText").innerHTML += html;
+
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+/* ---------------- HISTORY + TREND GRAPH ---------------- */
+
+async function loadHistory() {
+
+  const child = localStorage.getItem("selectedChild");
+
+  const res = await fetch(`${BASE_URL}/history/${child}`, {
+    headers: { "Authorization": `Bearer ${token}` }
+  });
+
+  const data = await res.json();
+
+  const container = document.getElementById("historySection");
+  container.innerHTML = "<h3>Previous Reports</h3>";
+
+  data.forEach(entry => {
+    container.innerHTML += `
+      <div style="border:1px solid #ccc; padding:10px; margin:10px;">
+        <strong>${entry.status}</strong><br>
+        ${entry.summary}<br>
+        <small>${entry.timestamp}</small>
+      </div>
+    `;
+  });
+
+  drawTrendChart(data);
+}
+
+function drawTrendChart(history) {
+
+  const labels = history.map((h, i) => "Check " + (i + 1));
+
+  const scoreMap = {
+    "On Track": 1,
+    "Needs Monitoring": 2,
+    "Extra Support Recommended": 3
+  };
+
+  const values = history.map(h => scoreMap[h.status]);
+
+  new Chart(document.getElementById("trendChart"), {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Development Trend',
+        data: values,
+        borderColor: 'blue',
+        fill: false
+      }]
+    },
+    options: {
+      scales: {
+        y: {
+          min: 1,
+          max: 3,
+          ticks: {
+            callback: function(value) {
+              return ["On Track", "Needs Monitoring", "Extra Support"][value-1];
+            }
+          }
+        }
+      }
+    }
+  });
 }

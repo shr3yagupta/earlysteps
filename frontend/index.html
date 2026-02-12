@@ -2,6 +2,7 @@
 <html>
 <head>
   <title>EarlySteps – Child Development Check</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
@@ -19,7 +20,7 @@
   </div>
 </div>
 
-<!-- PROFILE SECTION -->
+<!-- PROFILE -->
 <div id="profileSection" style="display:none;">
   <h2>Create Child Profile</h2>
   <input type="text" id="childName" placeholder="Child Name">
@@ -32,20 +33,22 @@
 
 <!-- FEATURE SELECTION -->
 <div id="featureSection" style="display:none;">
-  <h2>Select Assessment Type</h2>
-
-  <button onclick="showQuestionnaire()">Questionnaire</button>
-  <button onclick="showGames()">Play & Observe</button>
-  <button onclick="showAudio()">Audio Report</button>
-  <button onclick="showVideo()">Video Analysis</button>
+  <h2>Select Assessment</h2>
+  <button onclick="showQuestionnaire()">Development Check‑Up</button>
+  <button onclick="loadHistory()">View Past Reports</button>
 </div>
 
 <!-- QUESTIONNAIRE -->
 <div id="questionnaireSection" style="display:none;">
-  <h2>Autism Early Screening Questionnaire</h2>
+  <h2>Child Development Check‑Up</h2>
+  <p>Please answer based on your child’s usual behavior.</p>
+
   <div id="questionsContainer"></div>
-  <button onclick="submitQuestionnaire()">Submit</button>
-  <p id="resultText"></p>
+  <button onclick="submitQuestionnaire()">Submit Assessment</button>
+
+  <div id="resultText"></div>
+  <canvas id="trendChart" width="400" height="200"></canvas>
+  <div id="historySection"></div>
 </div>
 
 <script src="script.js"></script>

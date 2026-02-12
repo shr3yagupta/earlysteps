@@ -9,7 +9,7 @@ import random
 
 app = FastAPI()
 
-# CORS
+# ---------------- CORS ----------------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -18,15 +18,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ---------------- SECURITY ----------------
 SECRET_KEY = "earlysteps-secret"
 ALGORITHM = "HS256"
 security = HTTPBearer(auto_error=False)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# In-memory storage (hackathon demo)
+# ---------------- STORAGE (Demo) ----------------
 users_db = {}
 otp_db = {}
 profiles_db = {}
+results_db = {}
 
 # ---------------- MODELS ----------------
 
@@ -41,12 +43,13 @@ class PasswordAuth(BaseModel):
     identifier: str
     password: str
 
-class Answers(BaseModel):
-    answers: list[str]
-
 class Profile(BaseModel):
     name: str
     age: int
+
+class Answers(BaseModel):
+    child: str
+    answers: list[str]
 
 # ---------------- UTILS ----------------
 
@@ -97,17 +100,14 @@ def login(data: PasswordAuth):
     token = create_token(data.identifier)
     return {"token": token}
 
-# Request OTP (Demo mode)
+# OTP (Demo Mode)
 @app.post("/auth/request-otp")
 def request_otp(data: LoginRequest):
     otp = str(random.randint(100000, 999999))
     otp_db[data.identifier] = otp
-
     print("OTP for", data.identifier, "is:", otp)
+    return {"message": "OTP generated (check server logs)"}
 
-    return {"message": "OTP generated (check server logs for demo)"}
-
-# Verify OTP
 @app.post("/auth/verify-otp")
 def verify_otp(data: OTPVerify):
     if otp_db.get(data.identifier) != data.otp:
@@ -130,9 +130,20 @@ def create_profile(profile: Profile, user=Depends(verify_token)):
 def get_profiles(user=Depends(verify_token)):
     return profiles_db.get(user, [])
 
-# Screening
-@app.post("/check")
-def check_answers(data: Answers, user=Depends(verify_token)):
-    if data.answers.count("no") >= 2:
-        return {"result": "Screening recommended"}
-    return {"result": "Development looks okay"}
+# Questionnaire
+@app.post("/questionnaire")
+def questionnaire(data: Answers, user=Depends(verify_token)):
+
+    score = data.answers.count("no")
+
+    if score >= 3:
+        result = "Screening recommended"
+    else:
+        result = "Development looks okay"
+
+    if user not in results_db:
+        results_db[user] = {}
+
+    results_db[user][data.child] = result
+
+    return {"result": result}

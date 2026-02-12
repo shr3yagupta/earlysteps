@@ -6,10 +6,6 @@ from passlib.context import CryptContext
 from jose import jwt, JWTError
 from datetime import datetime, timedelta
 import random
-import os
-import smtplib
-from email.mime.text import MIMEText
-from twilio.rest import Client
 
 app = FastAPI()
 
@@ -22,17 +18,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Security
 SECRET_KEY = "earlysteps-secret"
 ALGORITHM = "HS256"
 security = HTTPBearer(auto_error=False)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# Temporary storage (hackathon)
+# In-memory storage (hackathon demo)
 users_db = {}
 otp_db = {}
+profiles_db = {}
 
-# ------------------ MODELS ------------------
+# ---------------- MODELS ----------------
 
 class LoginRequest(BaseModel):
     identifier: str
@@ -48,7 +44,11 @@ class PasswordAuth(BaseModel):
 class Answers(BaseModel):
     answers: list[str]
 
-# ------------------ UTILITIES ------------------
+class Profile(BaseModel):
+    name: str
+    age: int
+
+# ---------------- UTILS ----------------
 
 def create_token(identifier: str):
     return jwt.encode(
@@ -64,59 +64,28 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     if credentials is None:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    token = credentials.credentials
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
         return payload["sub"]
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-def is_email(identifier: str):
-    return "@" in identifier
-
-# ------------------ EMAIL OTP ------------------
-def send_email_otp(to_email, otp):
-    msg = MIMEText(f"Your EarlySteps OTP is: {otp}")
-    msg["Subject"] = "EarlySteps OTP"
-    msg["From"] = os.getenv("EMAIL_ADDRESS")
-    msg["To"] = to_email
-
-    server = smtplib.SMTP("smtp.gmail.com", 587)
-    server.starttls()
-    server.login(os.getenv("EMAIL_ADDRESS"), os.getenv("EMAIL_PASSWORD"))
-    server.send_message(msg)
-    server.quit()
-
-# ------------------ SMS OTP ------------------
-
-def send_sms_otp(phone, otp):
-    client = Client(
-        os.getenv("TWILIO_SID"),
-        os.getenv("TWILIO_AUTH")
-    )
-
-    client.messages.create(
-        body=f"Your EarlySteps OTP is {otp}",
-        from_=os.getenv("TWILIO_PHONE"),
-        to=phone
-    )
-
-# ------------------ ROUTES ------------------
+# ---------------- ROUTES ----------------
 
 @app.get("/")
 def root():
     return {"message": "EarlySteps backend running"}
 
-# Signup with password
+# Signup
 @app.post("/auth/signup")
 def signup(data: PasswordAuth):
     if data.identifier in users_db:
         raise HTTPException(status_code=400, detail="User exists")
 
     users_db[data.identifier] = pwd_context.hash(data.password)
-    return {"message": "User created successfully"}
+    return {"message": "User created"}
 
-# Password login
+# Password Login
 @app.post("/auth/login")
 def login(data: PasswordAuth):
     if data.identifier not in users_db:
@@ -128,7 +97,7 @@ def login(data: PasswordAuth):
     token = create_token(data.identifier)
     return {"token": token}
 
-# Request OTP
+# Request OTP (Demo mode)
 @app.post("/auth/request-otp")
 def request_otp(data: LoginRequest):
     otp = str(random.randint(100000, 999999))
@@ -147,7 +116,21 @@ def verify_otp(data: OTPVerify):
     token = create_token(data.identifier)
     return {"token": token}
 
-# Protected check
+# Create Profile
+@app.post("/profiles")
+def create_profile(profile: Profile, user=Depends(verify_token)):
+    if user not in profiles_db:
+        profiles_db[user] = []
+
+    profiles_db[user].append(profile.dict())
+    return {"message": "Profile created"}
+
+# Get Profiles
+@app.get("/profiles")
+def get_profiles(user=Depends(verify_token)):
+    return profiles_db.get(user, [])
+
+# Screening
 @app.post("/check")
 def check_answers(data: Answers, user=Depends(verify_token)):
     if data.answers.count("no") >= 2:

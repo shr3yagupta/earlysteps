@@ -18,6 +18,16 @@
   </div>
 </div>
 
+<div id="profileSection" style="display:none;">
+  <h2>Create Child Profile</h2>
+  <input type="text" id="childName" placeholder="Child Name">
+  <input type="number" id="childAge" placeholder="Age">
+  <button onclick="createProfile()">Add Profile</button>
+
+  <h3>Your Profiles</h3>
+  <ul id="profileList"></ul>
+</div>
+
 <div id="appSection" style="display:none;">
   <h2>Does your child respond to their name?</h2>
   <button onclick="submitAnswer('yes')">Yes</button>

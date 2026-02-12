@@ -129,17 +129,14 @@ def login(data: PasswordAuth):
     return {"token": token}
 
 # Request OTP
-@app.post("/auth/request-otp")
+@@app.post("/auth/request-otp")
 def request_otp(data: LoginRequest):
     otp = str(random.randint(100000, 999999))
     otp_db[data.identifier] = otp
 
-    if is_email(data.identifier):
-        send_email_otp(data.identifier, otp)
-    else:
-        send_sms_otp(data.identifier, otp)
+    print("OTP for", data.identifier, "is:", otp)
 
-    return {"message": "OTP sent"}
+    return {"message": "OTP generated (check server logs for demo)"}
 
 # Verify OTP
 @app.post("/auth/verify-otp")

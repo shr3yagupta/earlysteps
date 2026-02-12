@@ -129,7 +129,7 @@ def login(data: PasswordAuth):
     return {"token": token}
 
 # Request OTP
-@@app.post("/auth/request-otp")
+@app.post("/auth/request-otp")
 def request_otp(data: LoginRequest):
     otp = str(random.randint(100000, 999999))
     otp_db[data.identifier] = otp

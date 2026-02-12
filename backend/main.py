@@ -75,7 +75,6 @@ def is_email(identifier: str):
     return "@" in identifier
 
 # ------------------ EMAIL OTP ------------------
-
 def send_email_otp(to_email, otp):
     msg = MIMEText(f"Your EarlySteps OTP is: {otp}")
     msg["Subject"] = "EarlySteps OTP"
@@ -87,7 +86,6 @@ def send_email_otp(to_email, otp):
     server.login(os.getenv("EMAIL_ADDRESS"), os.getenv("EMAIL_PASSWORD"))
     server.send_message(msg)
     server.quit()
-
 
 # ------------------ SMS OTP ------------------
 

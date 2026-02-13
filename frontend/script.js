@@ -191,46 +191,52 @@ async function loadNearbySupport() {
     label: "You"
   });
 
-  const titles = {
+  const categories = {
     government: "🏥 Government Hospitals",
     private: "🏥 Private Hospitals",
     specialists: "👩‍⚕ Development Specialists"
   };
 
-  let html = "<h3>Nearby Early Support Options</h3>";
+  let html = `<h3>Nearby Early Intervention & Support</h3>`;
 
-  Object.keys(data).forEach(category => {
+  for (const key in categories) {
 
-    html += `<h4>${titles[category]}</h4><ul>`;
+    html += `<h4 style="margin-top:25px;">${categories[key]}</h4>`;
 
-    data[category].forEach(place => {
+    data[key].forEach(place => {
 
       html += `
-        <li style="margin-bottom:15px;">
+        <div style="
+          border:1px solid #ddd;
+          padding:15px;
+          margin-bottom:15px;
+          border-radius:10px;
+          background:#f9f9f9;
+        ">
           <strong>${place.name}</strong><br>
-          ${place.address}<br>
-          Rating: ${place.rating}<br>
+          📍 ${place.address}<br>
+          ⭐ Rating: ${place.rating}<br>
+          📏 Distance: ${place.distance}<br>
+          📞 Phone: ${place.phone}<br><br>
+
+          ${place.phone !== "Not Available" ? 
+            `<a href="tel:${place.phone}" style="margin-right:15px;">📲 Call</a>` : ""}
+
           <a target="_blank"
-             href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(place.name + ' ' + place.address)}">
-             Get Directions
+             href="https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}">
+             🧭 Get Directions
           </a>
-        </li>
+        </div>
       `;
 
-      const geocoder = new google.maps.Geocoder();
-      geocoder.geocode({ address: place.address }, function(results, status) {
-        if (status === "OK") {
-          new google.maps.Marker({
-            map: map,
-            position: results[0].geometry.location
-          });
-        }
+      // Add marker
+      new google.maps.Marker({
+        position: { lat: place.lat, lng: place.lng },
+        map: map
       });
 
     });
-
-    html += "</ul>";
-  });
+  }
 
   document.getElementById("resultText").innerHTML += html;
 }

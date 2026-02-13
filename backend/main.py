@@ -180,11 +180,12 @@ def get_history(child: str, user=Depends(verify_token)):
     return results_db.get(user, {}).get(child, [])
 
 # ---------------- NEARBY SUPPORT ----------------
-
 @app.get("/nearby-support")
 def nearby_support(lat: float, lng: float):
 
     base_url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
+    details_url = "https://maps.googleapis.com/maps/api/place/details/json"
+    distance_url = "https://maps.googleapis.com/maps/api/distancematrix/json"
 
     categories = {
         "government": "government hospital pediatric",
@@ -207,11 +208,44 @@ def nearby_support(lat: float, lng: float):
         data = response.json()
 
         results = []
+
         for place in data.get("results", [])[:5]:
+
+            place_id = place["place_id"]
+
+            # Get phone number
+            details_params = {
+                "place_id": place_id,
+                "fields": "formatted_phone_number",
+                "key": GOOGLE_API_KEY
+            }
+
+            details_res = requests.get(details_url, params=details_params)
+            phone = details_res.json().get("result", {}).get("formatted_phone_number", "Not Available")
+
+            # Get distance
+            distance_params = {
+                "origins": f"{lat},{lng}",
+                "destinations": f"{place['geometry']['location']['lat']},{place['geometry']['location']['lng']}",
+                "key": GOOGLE_API_KEY
+            }
+
+            distance_res = requests.get(distance_url, params=distance_params)
+            distance_data = distance_res.json()
+
+            try:
+                distance_text = distance_data["rows"][0]["elements"][0]["distance"]["text"]
+            except:
+                distance_text = "N/A"
+
             results.append({
                 "name": place["name"],
                 "address": place.get("vicinity"),
-                "rating": place.get("rating", "N/A")
+                "rating": place.get("rating", "N/A"),
+                "phone": phone,
+                "distance": distance_text,
+                "lat": place["geometry"]["location"]["lat"],
+                "lng": place["geometry"]["location"]["lng"]
             })
 
         final_results[key] = results

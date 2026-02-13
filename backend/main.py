@@ -24,13 +24,13 @@ SECRET_KEY = "earlysteps-secret"
 ALGORITHM = "HS256"
 security = HTTPBearer(auto_error=False)
 
-users_db = {}
 otp_db = {}
 profiles_db = {}
 results_db = {}
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
 
+# ---------------- MODELS ----------------
 class LoginRequest(BaseModel):
     identifier: str
 
@@ -46,6 +46,7 @@ class Answers(BaseModel):
     child: str
     answers: list[str]
 
+# ---------------- TOKEN ----------------
 def create_token(identifier: str):
     return jwt.encode(
         {"sub": identifier, "exp": datetime.utcnow() + timedelta(hours=2)},
@@ -86,6 +87,45 @@ def create_profile(profile: Profile, user=Depends(verify_token)):
 def get_profiles(user=Depends(verify_token)):
     return profiles_db.get(user, [])
 
+# ---------------- QUESTIONNAIRE ----------------
+@app.post("/questionnaire")
+def questionnaire(data: Answers, user=Depends(verify_token)):
+
+    # Simple scoring logic (stable demo version)
+    score = data.answers.count("no")
+
+    if score <= 1:
+        status = "On Track"
+    elif score <= 3:
+        status = "Needs Monitoring"
+    else:
+        status = "Extra Support Recommended"
+
+    summary = "Assessment based on overall response patterns focusing on absence of age‑appropriate behaviors."
+
+    result = {
+        "status": status,
+        "summary": summary,
+        "reassurance": "This is not a medical diagnosis. This is an early screening tool.",
+        "next_steps": [
+            "Observe behaviors over next 4–6 weeks.",
+            "Consult pediatrician if concerns persist."
+        ],
+        "follow_up": "Repeat screening in 30 days.",
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+    results_db.setdefault(user, {})
+    results_db[user].setdefault(data.child, [])
+    results_db[user][data.child].append(result)
+
+    return result
+
+# ---------------- HISTORY ----------------
+@app.get("/history/{child}")
+def get_history(child: str, user=Depends(verify_token)):
+    return results_db.get(user, {}).get(child, [])
+
 # ---------------- NEARBY SUPPORT ----------------
 @app.get("/nearby-support")
 def nearby_support(lat: float, lng: float):
@@ -120,7 +160,6 @@ def nearby_support(lat: float, lng: float):
 
             place_id = place["place_id"]
 
-            # Phone
             details_res = requests.get(details_url, params={
                 "place_id": place_id,
                 "fields": "formatted_phone_number",
@@ -128,7 +167,6 @@ def nearby_support(lat: float, lng: float):
             })
             phone = details_res.json().get("result", {}).get("formatted_phone_number", "Not Available")
 
-            # Distance
             distance_res = requests.get(distance_url, params={
                 "origins": f"{lat},{lng}",
                 "destinations": f"{place['geometry']['location']['lat']},{place['geometry']['location']['lng']}",

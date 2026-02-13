@@ -1,5 +1,6 @@
 const BASE_URL = "https://earlysteps-backend.onrender.com";
 let token = null;
+let mapInstance = null;
 
 /* ---------------- LOGIN ---------------- */
 
@@ -152,10 +153,10 @@ async function submitQuestionnaire() {
     <h4>National Child Helpline (India): 1098</h4>
   `;
 
-  loadNearbySupport();
+  await loadNearbySupport();
 }
 
-/* ---------------- LOCATION SUPPORT ---------------- */
+/* ---------------- LOCATION ---------------- */
 
 function getUserLocation() {
   return new Promise((resolve, reject) => {
@@ -164,14 +165,24 @@ function getUserLocation() {
         lat: pos.coords.latitude,
         lng: pos.coords.longitude
       }),
-      () => reject("Location denied")
+      err => reject(err)
     );
   });
 }
 
+/* ---------------- NEARBY SUPPORT ---------------- */
+
 async function loadNearbySupport() {
 
-  const location = await getUserLocation();
+  let location;
+
+  try {
+    location = await getUserLocation();
+  } catch {
+    document.getElementById("resultText").innerHTML +=
+      "<p style='color:red;'>Location permission denied.</p>";
+    return;
+  }
 
   const res = await fetch(
     `${BASE_URL}/nearby-support?lat=${location.lat}&lng=${location.lng}`
@@ -179,15 +190,15 @@ async function loadNearbySupport() {
 
   const data = await res.json();
 
-  const map = new google.maps.Map(document.getElementById("map"), {
+  // Initialize map only once
+  mapInstance = new google.maps.Map(document.getElementById("map"), {
     center: { lat: location.lat, lng: location.lng },
     zoom: 13
   });
 
-  // User marker
   new google.maps.Marker({
     position: { lat: location.lat, lng: location.lng },
-    map,
+    map: mapInstance,
     label: "You"
   });
 
@@ -197,30 +208,27 @@ async function loadNearbySupport() {
     specialists: "👩‍⚕ Development Specialists"
   };
 
-  let html = `<h3>Nearby Early Intervention & Support</h3>`;
+  let html = "<h3>Nearby Early Intervention & Support</h3>";
 
   for (const key in categories) {
+
+    if (!data[key] || data[key].length === 0) continue;
 
     html += `<h4 style="margin-top:25px;">${categories[key]}</h4>`;
 
     data[key].forEach(place => {
 
       html += `
-        <div style="
-          border:1px solid #ddd;
-          padding:15px;
-          margin-bottom:15px;
-          border-radius:10px;
-          background:#f9f9f9;
-        ">
+        <div style="border:1px solid #ddd;padding:15px;margin-bottom:15px;border-radius:10px;background:#f9f9f9;">
           <strong>${place.name}</strong><br>
           📍 ${place.address}<br>
           ⭐ Rating: ${place.rating}<br>
           📏 Distance: ${place.distance}<br>
           📞 Phone: ${place.phone}<br><br>
 
-          ${place.phone !== "Not Available" ? 
-            `<a href="tel:${place.phone}" style="margin-right:15px;">📲 Call</a>` : ""}
+          ${place.phone !== "Not Available"
+            ? `<a href="tel:${place.phone}" style="margin-right:15px;">📲 Call</a>`
+            : ""}
 
           <a target="_blank"
              href="https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}">
@@ -229,81 +237,13 @@ async function loadNearbySupport() {
         </div>
       `;
 
-      // Add marker
       new google.maps.Marker({
         position: { lat: place.lat, lng: place.lng },
-        map: map
+        map: mapInstance
       });
 
     });
   }
 
   document.getElementById("resultText").innerHTML += html;
-}
-
-/* ---------------- HISTORY + TREND GRAPH ---------------- */
-
-async function loadHistory() {
-
-  const child = localStorage.getItem("selectedChild");
-
-  const res = await fetch(`${BASE_URL}/history/${child}`, {
-    headers: { "Authorization": `Bearer ${token}` }
-  });
-
-  const data = await res.json();
-
-  const container = document.getElementById("historySection");
-  container.innerHTML = "<h3>Previous Reports</h3>";
-
-  data.forEach(entry => {
-    container.innerHTML += `
-      <div style="border:1px solid #ccc; padding:10px; margin:10px;">
-        <strong>${entry.status}</strong><br>
-        ${entry.summary}<br>
-        <small>${entry.timestamp}</small>
-      </div>
-    `;
-  });
-
-  drawTrendChart(data);
-}
-
-function drawTrendChart(history) {
-
-  const labels = history.map((h, i) => "Check " + (i + 1));
-
-  const scoreMap = {
-    "On Track": 1,
-    "Needs Monitoring": 2,
-    "Extra Support Recommended": 3
-  };
-
-  const values = history.map(h => scoreMap[h.status]);
-
-  new Chart(document.getElementById("trendChart"), {
-    type: 'line',
-    data: {
-      labels: labels,
-      datasets: [{
-        label: 'Development Trend',
-        data: values,
-        borderColor: 'blue',
-        fill: false
-      }]
-    },
-    options: {
-      scales: {
-        y: {
-          min: 1,
-          max: 3,
-          ticks: {
-            callback: function(value) {
-              return ["On Track", "Needs Monitoring", "Extra Support"][value-1];
-            }
-          }
-        }
-      }
-    }
-  });
 }

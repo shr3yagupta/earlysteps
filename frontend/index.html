@@ -4,11 +4,60 @@
   <title>EarlySteps – Child Development Check</title>
 
   <!-- Google Maps API -->
+  <!-- Replace YOUR_GOOGLE_MAPS_API_KEY with your new restricted key -->
   <script async
     src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD7wocfOuYn8m7O9gM4RTfg-KnNjo_GnSc">
   </script>
 
+  <!-- Chart.js for Trend Graph -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      max-width: 900px;
+    }
+
+    h1 {
+      color: #2c3e50;
+    }
+
+    button {
+      padding: 8px 14px;
+      margin-top: 8px;
+      cursor: pointer;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      background-color: #f4f4f4;
+    }
+
+    input {
+      padding: 6px;
+      margin-top: 5px;
+      margin-bottom: 8px;
+      width: 250px;
+    }
+
+    #map {
+      height: 400px;
+      width: 100%;
+      margin-top: 20px;
+      border-radius: 10px;
+    }
+
+    .card {
+      border: 1px solid #ddd;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 10px;
+      background: #f9f9f9;
+    }
+  </style>
 </head>
+
 <body>
 
 <h1>EarlySteps – Child Development Check</h1>
@@ -17,10 +66,12 @@
 <div id="loginSection">
   <h2>Login</h2>
   <input type="text" id="identifier" placeholder="Enter email or phone" />
+  <br>
   <button onclick="requestOTP()">Send OTP</button>
 
   <div id="otpBox" style="display:none;">
     <input type="text" id="otpInput" placeholder="Enter OTP" />
+    <br>
     <button onclick="verifyOTP()">Verify OTP</button>
   </div>
 </div>
@@ -29,7 +80,9 @@
 <div id="profileSection" style="display:none;">
   <h2>Create Child Profile</h2>
   <input type="text" id="childName" placeholder="Child Name">
+  <br>
   <input type="number" id="childAge" placeholder="Age">
+  <br>
   <button onclick="createProfile()">Add Profile</button>
 
   <h3>Your Profiles</h3>
@@ -49,14 +102,21 @@
   <p>Please answer based on your child’s usual behavior.</p>
 
   <div id="questionsContainer"></div>
-  <button type="button" onclick="submitQuestionnaire()">Submit Assessment</button>
 
-  <div id="resultText"></div>
+  <button type="button" onclick="submitQuestionnaire()">
+    Submit Assessment
+  </button>
 
-  <!-- Map -->
-  <div id="map" style="height:400px; width:100%; margin-top:20px;"></div>
+  <div id="resultText" style="margin-top:20px;"></div>
 
+  <!-- Google Map -->
+  <div id="map"></div>
+
+  <!-- Trend Graph -->
+  <h3>Development Trend</h3>
   <canvas id="trendChart" width="400" height="200"></canvas>
+
+  <!-- History -->
   <div id="historySection"></div>
 </div>
 

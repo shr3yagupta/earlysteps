@@ -107,7 +107,6 @@ def get_profiles(user=Depends(verify_token)):
     return profiles_db.get(user, [])
 
 # ---------------- QUESTIONNAIRE WITH AI ----------------
-
 @app.post("/questionnaire")
 def questionnaire(data: Answers, user=Depends(verify_token)):
 
@@ -115,57 +114,42 @@ def questionnaire(data: Answers, user=Depends(verify_token)):
         [f"Q{i+1}: {ans}" for i, ans in enumerate(data.answers)]
     )
 
-    prompt = f"""
-    You are a responsible developmental screening AI.
-
-    Questionnaire responses:
-    {formatted_answers}
-
-    Analyze overall behavioral pattern.
-    Focus on absence of age-appropriate behaviors.
-    Categorize strictly as:
-    - On Track
-    - Needs Monitoring
-    - Extra Support Recommended
-
-    Provide:
-    - status
-    - summary (parent friendly)
-    - reassurance (clear: not diagnosis)
-    - next_steps (list)
-    - follow_up (timeline recommendation)
-
-    Return JSON only.
-    """
-
-    ai_response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.3
-    )
-
     try:
-        result = json.loads(ai_response.choices[0].message.content)
-    except:
-        result = {
-            "status": "Needs Monitoring",
-            "summary": ai_response.choices[0].message.content,
-            "reassurance": "This is not a medical diagnosis.",
-            "next_steps": ["Consult pediatrician."],
-            "follow_up": "Repeat screening in 4 weeks."
-        }
+        prompt = f"Analyze developmental pattern:\n{formatted_answers}"
 
-    result["timestamp"] = datetime.utcnow().isoformat()
+        ai_response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3
+        )
 
-    if user not in results_db:
-        results_db[user] = {}
+        summary = ai_response.choices[0].message.content
+        status = "Needs Monitoring"
 
-    if data.child not in results_db[user]:
-        results_db[user][data.child] = []
+    except Exception as e:
+        print("AI ERROR:", e)
 
-    results_db[user][data.child].append(result)
+        score = data.answers.count("no")
 
-    return result
+        if score <= 1:
+            status = "On Track"
+        elif score <= 3:
+            status = "Needs Monitoring"
+        else:
+            status = "Extra Support Recommended"
+
+        summary = "Based on overall response patterns, some behaviors may require monitoring."
+
+    return {
+        "status": status,
+        "summary": summary,
+        "reassurance": "This is not a medical diagnosis.",
+        "next_steps": [
+            "Observe over next 4–6 weeks.",
+            "Consult pediatrician if concerns persist."
+        ],
+        "follow_up": "Repeat screening in 30 days."
+    }
 
 # ---------------- HISTORY ----------------
 

@@ -2,14 +2,12 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
-from passlib.context import CryptContext
 from jose import jwt, JWTError
 from datetime import datetime, timedelta
 import random
 import os
-import json
 import requests
-from openai import OpenAI
+import google.generativeai as genai
 
 app = FastAPI()
 
@@ -26,13 +24,14 @@ app.add_middleware(
 SECRET_KEY = "earlysteps-secret"
 ALGORITHM = "HS256"
 security = HTTPBearer(auto_error=False)
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# ---------------- AI CLIENT ----------------
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-GOOGLE_API_KEY = os.getenv("GAIzaSyD7wocfOuYn8m7O9gM4RTfg-KnNjo_GnSc")
+# ---------------- GEMINI CONFIG ----------------
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+model = genai.GenerativeModel("gemini-1.5-flash")
 
-# ---------------- STORAGE (Demo) ----------------
+GOOGLE_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
+
+# ---------------- DEMO STORAGE ----------------
 users_db = {}
 otp_db = {}
 profiles_db = {}
@@ -55,14 +54,11 @@ class Answers(BaseModel):
     child: str
     answers: list[str]
 
-# ---------------- UTILS ----------------
+# ---------------- AUTH UTILS ----------------
 
 def create_token(identifier: str):
     return jwt.encode(
-        {
-            "sub": identifier,
-            "exp": datetime.utcnow() + timedelta(hours=2)
-        },
+        {"sub": identifier, "exp": datetime.utcnow() + timedelta(hours=2)},
         SECRET_KEY,
         algorithm=ALGORITHM
     )
@@ -70,21 +66,20 @@ def create_token(identifier: str):
 def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     if credentials is None:
         raise HTTPException(status_code=401, detail="Not authenticated")
-
     try:
         payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
         return payload["sub"]
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-# ---------------- AUTH ----------------
+# ---------------- AUTH ROUTES ----------------
 
 @app.post("/auth/request-otp")
 def request_otp(data: LoginRequest):
     otp = str(random.randint(100000, 999999))
     otp_db[data.identifier] = otp
     print("OTP for", data.identifier, "is:", otp)
-    return {"message": "OTP generated (check server logs)"}
+    return {"message": "OTP generated (check logs)"}
 
 @app.post("/auth/verify-otp")
 def verify_otp(data: OTPVerify):
@@ -106,7 +101,8 @@ def create_profile(profile: Profile, user=Depends(verify_token)):
 def get_profiles(user=Depends(verify_token)):
     return profiles_db.get(user, [])
 
-# ---------------- QUESTIONNAIRE WITH AI ----------------
+# ---------------- QUESTIONNAIRE ----------------
+
 @app.post("/questionnaire")
 def questionnaire(data: Answers, user=Depends(verify_token)):
 
@@ -115,19 +111,34 @@ def questionnaire(data: Answers, user=Depends(verify_token)):
     )
 
     try:
-        prompt = f"Analyze developmental pattern:\n{formatted_answers}"
+        prompt = f"""
+        You are a responsible developmental screening AI.
 
-        ai_response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3
-        )
+        Questionnaire responses:
+        {formatted_answers}
 
-        summary = ai_response.choices[0].message.content
+        Analyze overall behavioral pattern.
+        Focus on absence of age-appropriate behaviors.
+
+        Categorize strictly as:
+        - On Track
+        - Needs Monitoring
+        - Extra Support Recommended
+
+        Provide:
+        1. status
+        2. summary (parent friendly)
+        3. reassurance (clear: not diagnosis)
+        4. next_steps (short list)
+        5. follow_up recommendation
+        """
+
+        response = model.generate_content(prompt)
+        summary = response.text
         status = "Needs Monitoring"
 
     except Exception as e:
-        print("AI ERROR:", e)
+        print("Gemini ERROR:", e)
 
         score = data.answers.count("no")
 
@@ -138,18 +149,29 @@ def questionnaire(data: Answers, user=Depends(verify_token)):
         else:
             status = "Extra Support Recommended"
 
-        summary = "Based on overall response patterns, some behaviors may require monitoring."
+        summary = "Based on response patterns, some age‑appropriate behaviors may require monitoring."
 
-    return {
+    result = {
         "status": status,
         "summary": summary,
-        "reassurance": "This is not a medical diagnosis.",
+        "reassurance": "This is not a medical diagnosis. This tool is for early screening only.",
         "next_steps": [
-            "Observe over next 4–6 weeks.",
+            "Observe behaviors over next 4–6 weeks.",
             "Consult pediatrician if concerns persist."
         ],
-        "follow_up": "Repeat screening in 30 days."
+        "follow_up": "Repeat screening in 30 days.",
+        "timestamp": datetime.utcnow().isoformat()
     }
+
+    if user not in results_db:
+        results_db[user] = {}
+
+    if data.child not in results_db[user]:
+        results_db[user][data.child] = []
+
+    results_db[user][data.child].append(result)
+
+    return result
 
 # ---------------- HISTORY ----------------
 
@@ -169,7 +191,7 @@ def nearby_support(lat: float, lng: float):
         "radius": 5000,
         "type": "hospital",
         "keyword": "pediatric developmental clinic",
-        "key": AIzaSyD7wocfOuYn8m7O9gM4RTfg-KnNjo_GnSc
+        "key": GOOGLE_API_KEY
     }
 
     response = requests.get(url, params=params)

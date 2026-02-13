@@ -6,4 +6,5 @@ python-dotenv
 twilio
 openai
 requests
+google-generativeai
 

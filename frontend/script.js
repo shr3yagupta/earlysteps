@@ -170,26 +170,69 @@ function getUserLocation() {
 }
 
 async function loadNearbySupport() {
-  try {
-    const location = await getUserLocation();
 
-    const res = await fetch(
-      `${BASE_URL}/nearby-support?lat=${location.lat}&lng=${location.lng}`
-    );
+  const location = await getUserLocation();
 
-    const data = await res.json();
+  const res = await fetch(
+    `${BASE_URL}/nearby-support?lat=${location.lat}&lng=${location.lng}`
+  );
 
-    let html = "<h4>Nearby Support Centers:</h4><ul>";
-    data.forEach(place => {
-      html += `<li><strong>${place.name}</strong><br>${place.address}</li>`;
+  const data = await res.json();
+
+  const map = new google.maps.Map(document.getElementById("map"), {
+    center: { lat: location.lat, lng: location.lng },
+    zoom: 13
+  });
+
+  // User marker
+  new google.maps.Marker({
+    position: { lat: location.lat, lng: location.lng },
+    map,
+    label: "You"
+  });
+
+  const titles = {
+    government: "🏥 Government Hospitals",
+    private: "🏥 Private Hospitals",
+    specialists: "👩‍⚕ Development Specialists"
+  };
+
+  let html = "<h3>Nearby Early Support Options</h3>";
+
+  Object.keys(data).forEach(category => {
+
+    html += `<h4>${titles[category]}</h4><ul>`;
+
+    data[category].forEach(place => {
+
+      html += `
+        <li style="margin-bottom:15px;">
+          <strong>${place.name}</strong><br>
+          ${place.address}<br>
+          Rating: ${place.rating}<br>
+          <a target="_blank"
+             href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(place.name + ' ' + place.address)}">
+             Get Directions
+          </a>
+        </li>
+      `;
+
+      const geocoder = new google.maps.Geocoder();
+      geocoder.geocode({ address: place.address }, function(results, status) {
+        if (status === "OK") {
+          new google.maps.Marker({
+            map: map,
+            position: results[0].geometry.location
+          });
+        }
+      });
+
     });
+
     html += "</ul>";
+  });
 
-    document.getElementById("resultText").innerHTML += html;
-
-  } catch (error) {
-    console.log(error);
-  }
+  document.getElementById("resultText").innerHTML += html;
 }
 
 /* ---------------- HISTORY + TREND GRAPH ---------------- */

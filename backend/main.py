@@ -184,25 +184,36 @@ def get_history(child: str, user=Depends(verify_token)):
 @app.get("/nearby-support")
 def nearby_support(lat: float, lng: float):
 
-    url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
+    base_url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
 
-    params = {
-        "location": f"{lat},{lng}",
-        "radius": 5000,
-        "type": "hospital",
-        "keyword": "pediatric developmental clinic",
-        "key": GOOGLE_API_KEY
+    categories = {
+        "government": "government hospital pediatric",
+        "private": "private hospital pediatric",
+        "specialists": "developmental pediatrician child psychologist therapy"
     }
 
-    response = requests.get(url, params=params)
-    data = response.json()
+    final_results = {}
 
-    results = []
+    for key, keyword in categories.items():
 
-    for place in data.get("results", [])[:5]:
-        results.append({
-            "name": place["name"],
-            "address": place.get("vicinity")
-        })
+        params = {
+            "location": f"{lat},{lng}",
+            "radius": 7000,
+            "keyword": keyword,
+            "key": GOOGLE_API_KEY
+        }
 
-    return results
+        response = requests.get(base_url, params=params)
+        data = response.json()
+
+        results = []
+        for place in data.get("results", [])[:5]:
+            results.append({
+                "name": place["name"],
+                "address": place.get("vicinity"),
+                "rating": place.get("rating", "N/A")
+            })
+
+        final_results[key] = results
+
+    return final_results

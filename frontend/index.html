@@ -2,7 +2,12 @@
 <html>
 <head>
   <title>EarlySteps – Child Development Check</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Google Maps API -->
+  <script async
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD7wocfOuYn8m7O9gM4RTfg-KnNjo_GnSc">
+  </script>
+
 </head>
 <body>
 
@@ -44,9 +49,13 @@
   <p>Please answer based on your child’s usual behavior.</p>
 
   <div id="questionsContainer"></div>
-  <button onclick="submitQuestionnaire()">Submit Assessment</button>
+  <button type="button" onclick="submitQuestionnaire()">Submit Assessment</button>
 
   <div id="resultText"></div>
+
+  <!-- Map -->
+  <div id="map" style="height:400px; width:100%; margin-top:20px;"></div>
+
   <canvas id="trendChart" width="400" height="200"></canvas>
   <div id="historySection"></div>
 </div>
